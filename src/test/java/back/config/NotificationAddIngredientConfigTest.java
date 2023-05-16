@@ -1,19 +1,33 @@
 package back.config;
 
+import back.global.TestData;
+import back.global.config.NotificationRedisConfig;
+import back.ingredient.application.domain.RegisteredIngredient;
+import back.ingredient.application.domain.SuggestedIngredient;
+import back.member.application.domain.Member;
+import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
 import back.notification.application.domain.Notification;
 import back.global.batch.NotificationAddIngredientConfig;
 import back.notification.adapter.out.repository.NotificationRepository;
+import back.notification.application.domain.NotificationType;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.*;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.ContextConfiguration;
 
 import javax.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,57 +35,90 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBatchTest
-@SpringBootTest(classes = {NotificationAddIngredientConfig.class, TestBatchLegacyConfig.class})
-class NotificationAddIngredientConfigTest {
+@SpringBootTest(classes = {
+        NotificationAddIngredientConfig.class,
+        TestBatchLegacyConfig.class,
+        NotificationByMemberAdapter.class,
+        NotificationRedisConfig.class,
+        TestData.class
+})
+class NotificationAddIngredientConfigTest extends BatchTestSupport {
 
     @Autowired
-    private JobLauncherTestUtils jobLauncherTestUtils;
+    @Qualifier("notificationRedisTemplate")
+    private RedisTemplate<String, Boolean> notificationRedisTemplate;
 
     @Autowired
     private NotificationRepository notificationRepository;
 
     @Autowired
-    private EntityManager em;
+    private TestData testData;
+
+    private Member member;
+    private SuggestedIngredient suggestedIngredient;
+    private RegisteredIngredient registeredIngredient;
+    private LocalDateTime now;
+
+    @BeforeEach
+    private void before() {
+        //given
+        entityManager.getTransaction().begin();
+
+        registeredIngredient = entityManager.find(RegisteredIngredient.class, 1L);
+        member = testData.createMember("email01@gmail.com");
+        suggestedIngredient = testData.createSuggestedIngredient("email01@gmail.com", registeredIngredient.getName());
+        notificationRedisTemplate.opsForValue().set(suggestedIngredient.getEmail(), false);
+
+        save(member);
+        save(suggestedIngredient);
+
+        entityManager.getTransaction().commit();
+    }
 
     @AfterEach
-    public void reset() {
-        notificationRepository.deleteAllInBatch();
+    public void after() {
+        entityManager.getTransaction().begin();
+
+        notificationRepository.deleteTestNotification(now);
+        delete(member);
+        delete(suggestedIngredient);
+
+        entityManager.getTransaction().commit();
+        entityManager.clear();
     }
 
     @Test
     void 식재료_추가_알림_테스트() throws Exception {
 
-        //given
+        //when
         Map<String, JobParameter> jobParameterMap = new HashMap<>();
 
-        DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS");
+        now = LocalDateTime.now();
 
-        Long id = 2L;
-        String name = "두부";
-
-        jobParameterMap.put("date", new JobParameter(LocalDateTime.now().format(format)));
-        jobParameterMap.put("id", new JobParameter(id));            // 수정
-        jobParameterMap.put("name", new JobParameter(name));        // 수정
+        jobParameterMap.put("date", new JobParameter(now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS"))));
+        jobParameterMap.put("id", new JobParameter(registeredIngredient.getId()));
+        jobParameterMap.put("name", new JobParameter(registeredIngredient.getName()));
 
         JobParameters parameters = new JobParameters(jobParameterMap);
 
-        JobParameters jobParameters = new JobParametersBuilder()
+        JobParameters jobParameters = getUniqueParameterBuilder()
                 .addJobParameters(parameters)
                 .toJobParameters();
 
-        //when
-        JobExecution jobExecution = jobLauncherTestUtils.launchJob(jobParameters);
+        JobExecution jobExecution = launchJob(jobParameters);
 
         //then
         assertThat(jobExecution.getExitStatus()).isEqualTo(ExitStatus.COMPLETED);
 
-        List<Notification> notificationList = notificationRepository.findAll();
 
-        List<String> emailList = em.createQuery("select si.email from SuggestedIngredient si where si.name = :name group by si.email", String.class)
-                .setParameter("name", name).getResultList();
-        assertThat(notificationList.size()).isEqualTo(emailList.size());
+        Notification notification = notificationRepository.findAll().stream().findAny().get();
 
-        assertThat(notificationList.get(0).getMessage()).isEqualTo("회원님이 요청했던 " + name + "를 이제 냉장고에 담을 수 있습니다. (식재료 추가하기)");
-        assertThat(notificationList.get(0).getPath()).isEqualTo("localhost:8080/api/ingredients/registered/" + id);
+        assertThat(notificationRedisTemplate.opsForValue().get(suggestedIngredient.getEmail())).isTrue();
+
+        assertThat(notification.getMemberId()).isEqualTo(suggestedIngredient.getEmail());
+        assertThat(notification.getMessage()).isEqualTo("회원님이 요청했던 " + registeredIngredient.getName() + "를 이제 냉장고에 담을 수 있습니다. (식재료 추가하기)");
+        assertThat(notification.getPath()).isEqualTo("/api/ingredients/unit/" + registeredIngredient.getId());
+        assertThat(notification.getType()).isEqualTo(NotificationType.INGREDIENT);
+        assertThat(notification.getMethod()).isEqualTo(HttpMethod.GET.name());
     }
 }

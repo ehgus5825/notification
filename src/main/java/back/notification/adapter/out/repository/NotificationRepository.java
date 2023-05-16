@@ -16,16 +16,16 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Modifying
     @Transactional
-    @Query("delete from Notifications n where n.type = 1 and n.createTime < :date")
+    @Query("delete from Notification n where n.type = back.notification.application.domain.NotificationType.EXPIRATION_DATE and n.createDate < :date")
     void deleteNotification(@Param("date") LocalDateTime date);
 
     @Modifying
     @Transactional
-    @Query("delete from Notifications n where n.type != 1 and n.createTime < :date")
+    @Query("delete from Notification n where n.type != back.notification.application.domain.NotificationType.EXPIRATION_DATE and n.createDate < :date")
     void deleteDeadlineNotification(@Param("date") LocalDateTime date);
 
-    /*
-    @Query("select mn from MemberNotification mn where mn.email = :email")
-    MemberNotifications findMemberNotification(@Param("email") String email);
-     */
+    @Modifying
+    @Transactional
+    @Query("delete from Notification n where n.createDate >= :date")
+    void deleteTestNotification(@Param("date") LocalDateTime date);
 }

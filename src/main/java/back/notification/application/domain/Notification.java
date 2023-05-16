@@ -47,15 +47,18 @@ public class Notification extends BaseTimeEntity {
                 .memberId(memberId).build();
     }
 
-    public String createExpirationDateMessage(String name, Long count, Integer days){
-        return name + " 외 "+ count + "개 식재료의 소비기한이 " + days + "일 남았습니다. 식재료 확인하러가기!";
+    public void createExpirationDateMessage(String name, Long count, Integer days){
+        if(count > 1)
+            this.message = name + " 외 "+ (count - 1) + "개 식재료의 소비기한이 " + days + "일 남았습니다. 식재료 확인하러가기!";
+        else
+            this.message = name + "의 소비기한이 " + days + "일 남았습니다. 식재료 확인하러가기!";
     }
 
-    public String createIngredientMessage(String name) {
-        return "회원님이 요청했던 " + name + "를 이제 냉장고에 담을 수 있습니다. (식재료 추가하기)";
+    public void createIngredientMessage(String name) {
+        this.message = "회원님이 요청했던 " + name + "를 이제 냉장고에 담을 수 있습니다. (식재료 추가하기)";
     }
 
-    public String createNoticeMessage(String title) {
-        return "공지사항이 추가되었어요! '" + title + "'";
+    public void createNoticeMessage(String title) {
+        this.message = "공지사항이 추가되었어요! '" + title + "'";
     }
 }

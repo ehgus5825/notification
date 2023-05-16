@@ -80,11 +80,11 @@ public class NotificationAddIngredientConfig {
                                                                          @Value("#{jobParameters['id']}") Long id) {
 
         return email -> {
-            adapter.create(email);
+            adapter.update(email);
 
             Notification notification = Notification.create(
                     NotificationType.INGREDIENT,
-                    "/api/ingredients/registered/" + id,      // back에 구현해야함.
+                    "/api/ingredients/unit/" + id,
                     email,
                     HttpMethod.GET.name());
             notification.createIngredientMessage(name);

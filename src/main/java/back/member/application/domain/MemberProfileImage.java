@@ -11,7 +11,8 @@ public enum MemberProfileImage {
     PROFILE_IMAGE_TWO("IMG_9706.JPG"),
     PROFILE_IMAGE_THREE("IMG_9707.JPG"),
     PROFILE_IMAGE_FOUR("IMG_9708.JPG"),
-    PROFILE_IMAGE_FIVE("IMG_9705.JPG");
+    PROFILE_IMAGE_FIVE("IMG_9705.JPG"),
+    PROFILE_NOT_SELECT("");
 
     private String name;
 }

@@ -14,15 +14,7 @@ public class NotificationByMemberAdapter {
         this.repository = repository;
     }
 
-    public void create(String memberId) {
-        repository.opsForValue().set(memberId, false);
-    }
-
-    public void modify(String memberId, boolean value) {
-        repository.opsForValue().set(memberId, value);
-    }
-
-    public Boolean getSign(String memberId) {
-        return repository.opsForValue().get(memberId);
+    public void update(String memberId) {
+        repository.opsForValue().set(memberId, true);
     }
 }

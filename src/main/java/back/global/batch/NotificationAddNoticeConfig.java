@@ -73,7 +73,7 @@ public class NotificationAddNoticeConfig {
                                                                     @Value("#{jobParameters['id']}") Long id ) {
 
         return email -> {
-            adapter.create(email);
+            adapter.update(email);
             Notification notification = Notification.create(
                     NotificationType.NOTICE,
                     "/api/notice/" + id,

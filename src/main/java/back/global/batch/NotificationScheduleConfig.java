@@ -58,7 +58,6 @@ public class NotificationScheduleConfig {
     }
 
     // 알림 삭제 Step
-
     @Bean
     @JobScope
     public Step deleteNotificationStep() {
@@ -75,7 +74,6 @@ public class NotificationScheduleConfig {
     }
 
     // 임박 식재료 알림 생성 Step (1일)
-
     @Bean
     @JobScope
     public Step createDeadlineNotificationByOneStep() {
@@ -89,7 +87,8 @@ public class NotificationScheduleConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<OutIngredientDTO> createDeadlineNotificationByOneReader(@Value("#{jobParameters['date']}") String date) {
+    public JpaPagingItemReader<OutIngredientDTO> createDeadlineNotificationByOneReader(
+                                                                        @Value("#{jobParameters['date']}") String date) {
 
         LocalDate date1 = LocalDate.from(LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")));
 
@@ -100,7 +99,7 @@ public class NotificationScheduleConfig {
                 .name("createDeadlineNotificationReader")
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(chunkSize)
-                .queryString("select new back.dto.OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) from Ingredient i where i.expirationDate = :date group by i.email")
+                .queryString("select new back.notification.adapter.out.dto.OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) from Ingredient i where i.expirationDate = :date group by i.email")
                 .parameterValues(parameterValues)
                 .build();
     }
@@ -110,7 +109,7 @@ public class NotificationScheduleConfig {
     public ItemProcessor<OutIngredientDTO, Notification> createDeadlineNotificationByOneProcessor() {
 
         return (dto) -> {
-            adapter.create(dto.getEmail());
+            adapter.update(dto.getEmail());
 
             Notification notification = Notification.create(
                     NotificationType.EXPIRATION_DATE,
@@ -123,7 +122,6 @@ public class NotificationScheduleConfig {
     }
 
     // 임박 식재료 알림 생성 Step (3일)
-
     @Bean
     @JobScope
     public Step createDeadlineNotificationByThreeStep() {
@@ -137,18 +135,19 @@ public class NotificationScheduleConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<OutIngredientDTO> createDeadlineNotificationByThreeReader(@Value("#{jobParameters['date']}") String date) {
+    public JpaPagingItemReader<OutIngredientDTO> createDeadlineNotificationByThreeReader(
+                                                                        @Value("#{jobParameters['date']}") String date) {
 
         LocalDate date1 = LocalDate.from(LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")));
 
         Map<String, Object> parameterValues = new HashMap<>();
-        parameterValues.put("date", date1.plusDays(1));
+        parameterValues.put("date", date1.plusDays(3));
 
         return new JpaPagingItemReaderBuilder<OutIngredientDTO>()
                 .name("createDeadlineNotificationReader")
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(chunkSize)
-                .queryString("select new back.dto.OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) from Ingredient i where i.expirationDate = :date group by i.email")
+                .queryString("select new back.notification.adapter.out.dto.OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) from Ingredient i where i.expirationDate = :date group by i.email")
                 .parameterValues(parameterValues)
                 .build();
     }
@@ -158,13 +157,13 @@ public class NotificationScheduleConfig {
     public ItemProcessor<OutIngredientDTO, Notification> createDeadlineNotificationByThreeProcessor() {
 
         return (dto) -> {
-            adapter.create(dto.getEmail());
+            adapter.update(dto.getEmail());
             Notification notification = Notification.create(
                     NotificationType.EXPIRATION_DATE,
                     "/api/ingredients/deadline/3",
                     dto.getEmail(),
                     HttpMethod.GET.name());
-            notification.createExpirationDateMessage(dto.getName(), dto.getCount(), 3);
+            notification.createExpirationDateMessage(dto.getName(), dto.getCount() - 1, 3);
             return notification;
         };
     }

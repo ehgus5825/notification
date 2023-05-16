@@ -1,0 +1,6 @@
+spring:
+  redis:
+    notification:
+      host: localhost
+      port: 6377
+      timeout: 300

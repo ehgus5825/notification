@@ -25,8 +25,8 @@ public class JobScheduler {
     @Autowired
     private Job scheduleJob;
 
-    // @Scheduled(cron = "0 0 0 1/1 * ? *")
-    @Scheduled(cron = "1 * * * * *")
+    @Scheduled(cron = "0 0 0 1/1 * ? *")
+    //@Scheduled(cron = "1 * * * * *")
     public void jobScheduled() throws JobParametersInvalidException, JobExecutionAlreadyRunningException,
                                 JobRestartException, JobInstanceAlreadyCompleteException {
 
