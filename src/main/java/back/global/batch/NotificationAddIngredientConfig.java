@@ -93,7 +93,7 @@ public class NotificationAddIngredientConfig {
 
             Notification notification = Notification.create(
                     NotificationType.INGREDIENT,
-                    "/api/ingredients/unit/" + id,
+                    "/refrigerator/add/info?ingredient" + name,
                     suggestedIngredient.getEmail(),
                     HttpMethod.GET.name());
             notification.createIngredientMessage(name);

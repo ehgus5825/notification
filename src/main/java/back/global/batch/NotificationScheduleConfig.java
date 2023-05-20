@@ -133,7 +133,7 @@ public class NotificationScheduleConfig {
 
             Notification notification = Notification.create(
                     NotificationType.EXPIRATION_DATE,
-                    "/api/ingredients/deadline/1",
+                    "/exp?day=1",
                     dto.getEmail(),
                     HttpMethod.GET.name());
             notification.createExpirationDateMessage(dto.getName(), dto.getCount(), 1);
@@ -184,7 +184,7 @@ public class NotificationScheduleConfig {
             adapter.update(dto.getEmail());
             Notification notification = Notification.create(
                     NotificationType.EXPIRATION_DATE,
-                    "/api/ingredients/deadline/3",
+                    "/exp?day=3",
                     dto.getEmail(),
                     HttpMethod.GET.name());
             notification.createExpirationDateMessage(dto.getName(), dto.getCount() - 1, 3);
