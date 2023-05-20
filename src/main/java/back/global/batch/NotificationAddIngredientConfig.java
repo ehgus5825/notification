@@ -1,5 +1,12 @@
 package back.global.batch;
 
+import back.global.common.querydsl.expression.Expression;
+import back.global.common.querydsl.options.QuerydslNoOffsetNumberOptions;
+import back.global.common.querydsl.reader.QuerydslNoOffsetPagingItemReader;
+import back.ingredient.application.domain.QSuggestedIngredient;
+import back.ingredient.application.domain.SuggestedIngredient;
+import back.member.application.domain.Member;
+import back.member.application.domain.MemberStatus;
 import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
 import back.notification.application.domain.Notification;
 import back.notification.application.domain.NotificationType;
@@ -23,6 +30,9 @@ import org.springframework.http.HttpMethod;
 import javax.persistence.EntityManagerFactory;
 import java.util.HashMap;
 import java.util.Map;
+
+import static back.ingredient.application.domain.QSuggestedIngredient.*;
+import static back.member.application.domain.QMember.member;
 
 @RequiredArgsConstructor
 @Configuration
@@ -51,7 +61,7 @@ public class NotificationAddIngredientConfig {
     @JobScope
     public Step updateIngredientStep() {
         return stepBuilderFactory.get("updateIngredientStep")
-                .<String, Notification>chunk(chunkSize)
+                .<SuggestedIngredient, Notification>chunk(chunkSize)
                 .reader(updateIngredientReader(null))
                 .processor(updateIngredientProcessor(null,null))
                 .writer(updateIngredientWriter())
@@ -60,32 +70,31 @@ public class NotificationAddIngredientConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<String> updateIngredientReader(@Value("#{jobParameters['name']}") String name) {
+    public QuerydslNoOffsetPagingItemReader<SuggestedIngredient> updateIngredientReader(@Value("#{jobParameters['name']}") String name) {
 
-        Map<String, Object> parameterValue = new HashMap<>();
-        parameterValue.put("name", name);
+        QuerydslNoOffsetNumberOptions<SuggestedIngredient, Long> option = new QuerydslNoOffsetNumberOptions<>(suggestedIngredient.id, Expression.ASC);
 
-        return new JpaPagingItemReaderBuilder<String>()
-                .name("updateIngredientReader")
-                .entityManagerFactory(entityManagerFactory)
-                .pageSize(chunkSize)
-                .queryString("select si.email from SuggestedIngredient si where si.name = :name group by si.email")
-                .parameterValues(parameterValue)
-                .build();
+        return new QuerydslNoOffsetPagingItemReader<>(entityManagerFactory, chunkSize, option,
+                queryFactory -> queryFactory
+                        .selectFrom(suggestedIngredient)
+                        .where(
+                                suggestedIngredient.name.eq(name),
+                                member.memberStatus.eq(MemberStatus.STEADY_STATUS))
+                        .leftJoin(member).on(member.email.eq(suggestedIngredient.email)));
     }
 
     @Bean
     @StepScope
-    public ItemProcessor<String, Notification> updateIngredientProcessor(@Value("#{jobParameters['name']}") String name,
+    public ItemProcessor<SuggestedIngredient, Notification> updateIngredientProcessor(@Value("#{jobParameters['name']}") String name,
                                                                          @Value("#{jobParameters['id']}") Long id) {
 
-        return email -> {
-            adapter.update(email);
+        return suggestedIngredient -> {
+            adapter.update(suggestedIngredient.getEmail());
 
             Notification notification = Notification.create(
                     NotificationType.INGREDIENT,
                     "/api/ingredients/unit/" + id,
-                    email,
+                    suggestedIngredient.getEmail(),
                     HttpMethod.GET.name());
             notification.createIngredientMessage(name);
             return notification;

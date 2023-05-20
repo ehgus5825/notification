@@ -1,9 +1,9 @@
 package back.notification.adapter.out.dto;
 
+import com.querydsl.core.annotations.QueryProjection;
 import lombok.*;
 
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @ToString
@@ -13,4 +13,10 @@ public class OutIngredientDTO {
     private String name;
     private Long count;
 
+    @QueryProjection
+    public OutIngredientDTO(String email, String name, Long count) {
+        this.email = email;
+        this.name = name;
+        this.count = count;
+    }
 }

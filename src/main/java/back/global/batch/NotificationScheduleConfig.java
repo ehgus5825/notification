@@ -1,5 +1,15 @@
 package back.global.batch;
 
+import back.global.common.querydsl.expression.Expression;
+import back.global.common.querydsl.options.QuerydslNoOffsetNumberOptions;
+import back.global.common.querydsl.options.QuerydslNoOffsetStringOptions;
+import back.global.common.querydsl.reader.QuerydslNoOffsetPagingItemReader;
+import back.global.common.querydsl.reader.QuerydslPagingItemReader;
+import back.ingredient.application.domain.Ingredient;
+import back.ingredient.application.domain.QIngredient;
+import back.member.application.domain.Member;
+import back.member.application.domain.MemberStatus;
+import back.notification.adapter.out.dto.QOutIngredientDTO;
 import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
 import back.notification.adapter.out.repository.NotificationRepository;
 import back.notification.application.domain.Notification;
@@ -30,6 +40,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+
+import static back.ingredient.application.domain.QIngredient.*;
+import static back.member.application.domain.QMember.member;
+import static java.time.LocalDate.*;
+import static java.time.format.DateTimeFormatter.ofPattern;
 
 // 자정마다 해야할 것
 
@@ -87,21 +102,25 @@ public class NotificationScheduleConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<OutIngredientDTO> createDeadlineNotificationByOneReader(
+    public QuerydslPagingItemReader<OutIngredientDTO> createDeadlineNotificationByOneReader(
                                                                         @Value("#{jobParameters['date']}") String date) {
 
-        LocalDate date1 = LocalDate.from(LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")));
+        LocalDate localDate = from(LocalDateTime.parse(date, ofPattern("yyyy-MM-dd HH:mm:ss:SSS")));
 
-        Map<String, Object> parameterValues = new HashMap<>();
-        parameterValues.put("date", date1.plusDays(1));
+        QuerydslNoOffsetStringOptions<OutIngredientDTO> options = new QuerydslNoOffsetStringOptions<>(ingredient.email, Expression.ASC);
 
-        return new JpaPagingItemReaderBuilder<OutIngredientDTO>()
-                .name("createDeadlineNotificationReader")
-                .entityManagerFactory(entityManagerFactory)
-                .pageSize(chunkSize)
-                .queryString("select new back.notification.adapter.out.dto.OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) from Ingredient i where i.expirationDate = :date group by i.email")
-                .parameterValues(parameterValues)
-                .build();
+        return new QuerydslNoOffsetPagingItemReader<>(entityManagerFactory, chunkSize, options,
+                queryFactory -> queryFactory
+                        .select(new QOutIngredientDTO(
+                                ingredient.email,
+                                ingredient.name.min(),
+                                ingredient.id.count())
+                        )
+                        .from(ingredient)
+                        .where(ingredient.expirationDate.eq(localDate.plusDays(1)),
+                                member.memberStatus.eq(MemberStatus.STEADY_STATUS))
+                        .leftJoin(member).on(member.email.eq(ingredient.email))
+                        .groupBy(ingredient.email));
     }
 
     @Bean
@@ -109,6 +128,7 @@ public class NotificationScheduleConfig {
     public ItemProcessor<OutIngredientDTO, Notification> createDeadlineNotificationByOneProcessor() {
 
         return (dto) -> {
+
             adapter.update(dto.getEmail());
 
             Notification notification = Notification.create(
@@ -135,21 +155,25 @@ public class NotificationScheduleConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<OutIngredientDTO> createDeadlineNotificationByThreeReader(
+    public QuerydslNoOffsetPagingItemReader<OutIngredientDTO> createDeadlineNotificationByThreeReader(
                                                                         @Value("#{jobParameters['date']}") String date) {
 
-        LocalDate date1 = LocalDate.from(LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")));
+        LocalDate localDate = from(LocalDateTime.parse(date, ofPattern("yyyy-MM-dd HH:mm:ss:SSS")));
 
-        Map<String, Object> parameterValues = new HashMap<>();
-        parameterValues.put("date", date1.plusDays(3));
+        QuerydslNoOffsetStringOptions<OutIngredientDTO> options = new QuerydslNoOffsetStringOptions<>(ingredient.email, Expression.ASC);
 
-        return new JpaPagingItemReaderBuilder<OutIngredientDTO>()
-                .name("createDeadlineNotificationReader")
-                .entityManagerFactory(entityManagerFactory)
-                .pageSize(chunkSize)
-                .queryString("select new back.notification.adapter.out.dto.OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) from Ingredient i where i.expirationDate = :date group by i.email")
-                .parameterValues(parameterValues)
-                .build();
+        return new QuerydslNoOffsetPagingItemReader<>(entityManagerFactory, chunkSize, options,
+                queryFactory -> queryFactory
+                        .select(new QOutIngredientDTO(
+                                ingredient.email,
+                                ingredient.name.min(),
+                                ingredient.id.count())
+                        )
+                        .from(ingredient)
+                        .where(ingredient.expirationDate.eq(localDate.plusDays(3)),
+                                member.memberStatus.eq(MemberStatus.STEADY_STATUS))
+                        .leftJoin(member).on(member.email.eq(ingredient.email))
+                        .groupBy(ingredient.email));
     }
 
     @Bean

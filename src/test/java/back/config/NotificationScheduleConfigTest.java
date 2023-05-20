@@ -4,14 +4,19 @@ import back.global.TestData;
 import back.global.batch.NotificationAddNoticeConfig;
 import back.global.config.NotificationRedisConfig;
 import back.ingredient.application.domain.Ingredient;
+import back.ingredient.application.domain.QIngredient;
 import back.ingredient.application.domain.RegisteredIngredient;
 import back.member.application.domain.Member;
+import back.member.application.domain.MemberStatus;
+import back.member.application.domain.QMember;
 import back.notification.adapter.out.dto.OutIngredientDTO;
+import back.notification.adapter.out.dto.QOutIngredientDTO;
 import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
 import back.notification.application.domain.Notification;
 import back.global.batch.NotificationScheduleConfig;
 import back.notification.adapter.out.repository.NotificationRepository;
 import back.notification.application.domain.NotificationType;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +38,11 @@ import java.util.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import static back.ingredient.application.domain.QIngredient.*;
+import static back.member.application.domain.QMember.*;
+import static back.member.application.domain.QMember.member;
+import static java.time.LocalDate.from;
+import static java.time.format.DateTimeFormatter.ofPattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBatchTest
@@ -54,6 +64,9 @@ class NotificationScheduleConfigTest extends BatchTestSupport {
 
     @Autowired
     private TestData testData;
+
+    @Autowired
+    private JPAQueryFactory jpaQueryFactory;
 
     private LocalDateTime now;
     private List<Ingredient> ingredients = new ArrayList<>();
@@ -113,15 +126,7 @@ class NotificationScheduleConfigTest extends BatchTestSupport {
         assertThat(notificationList.size()).isEqualTo(2);
         assertThat(notificationRedisTemplate.opsForValue().get(notificationList.get(0).getMemberId())).isTrue();
 
-        String query = "select new back.notification.adapter.out.dto." +
-                "OutIngredientDTO(i.email, min(i.name) as name, count(i.id) as ingredient_count) " +
-                "from Ingredient i " +
-                "where i.expirationDate = :date " +
-                "group by i.email";
-
-        OutIngredientDTO ingredient1 = entityManager.createQuery(query, OutIngredientDTO.class)
-                .setParameter("date", LocalDate.now().plusDays(1))
-                .getResultList().stream().findAny().get();
+        OutIngredientDTO ingredient1 = getOutIngredientDTO(1).get();
 
         assertThat(notificationList.get(0).getMemberId()).isEqualTo(ingredient1.getEmail());
         assertThat(notificationList.get(0).getMessage()).isEqualTo(ingredient1.getName() + " 외 "+ (ingredient1.getCount() - 1) + "개 식재료의 소비기한이 " + 1 + "일 남았습니다. 식재료 확인하러가기!");
@@ -129,9 +134,7 @@ class NotificationScheduleConfigTest extends BatchTestSupport {
         assertThat(notificationList.get(0).getType()).isEqualTo(NotificationType.EXPIRATION_DATE);
         assertThat(notificationList.get(0).getMethod()).isEqualTo(HttpMethod.GET.name());
 
-        OutIngredientDTO ingredient2 = entityManager.createQuery(query, OutIngredientDTO.class)
-                .setParameter("date", LocalDate.now().plusDays(3))
-                .getResultList().stream().findAny().get();
+        OutIngredientDTO ingredient2 = getOutIngredientDTO(3).get();
 
         assertThat(notificationList.get(1).getMemberId()).isEqualTo(ingredient2.getEmail());
         assertThat(notificationList.get(1).getMessage()).isEqualTo(ingredient2.getName() + "의 소비기한이 " + 3 + "일 남았습니다. 식재료 확인하러가기!");
@@ -140,4 +143,23 @@ class NotificationScheduleConfigTest extends BatchTestSupport {
         assertThat(notificationList.get(1).getMethod()).isEqualTo(HttpMethod.GET.name());
 
     }
+
+    private Optional<OutIngredientDTO> getOutIngredientDTO(Integer days) {
+
+        OutIngredientDTO outIngredientDTO = jpaQueryFactory.select(new QOutIngredientDTO(
+                        ingredient.email,
+                        ingredient.name.min(),
+                        ingredient.id.count()))
+                .from(ingredient)
+                .where(
+                        ingredient.expirationDate.eq(LocalDate.now().plusDays(days)),
+                        QMember.member.memberStatus.eq(MemberStatus.STEADY_STATUS)
+                )
+                .leftJoin(QMember.member).on(QMember.member.email.eq(ingredient.email))
+                .groupBy(ingredient.email)
+                .fetchOne();
+
+        return Optional.ofNullable(outIngredientDTO);
+    }
 }
+

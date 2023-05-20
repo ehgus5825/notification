@@ -45,7 +45,8 @@ class NotificationAddNoticeConfigTest extends BatchTestSupport {
     @Autowired
     private TestData testData;
 
-    private Member member;
+    private Member member1;
+    private Member member2;
     private Notice notice;
     private LocalDateTime now;
 
@@ -54,11 +55,11 @@ class NotificationAddNoticeConfigTest extends BatchTestSupport {
         //given
         entityManager.getTransaction().begin();
 
-        member = testData.createMember("email01@gmail.com");
+        member1 = testData.createMember("email01@gmail.com");
         notice = testData.createNotice("안녕하세요");
-        notificationRedisTemplate.opsForValue().set(member.getEmail(), false);
+        notificationRedisTemplate.opsForValue().set(member1.getEmail(), false);
 
-        save(member);
+        save(member1);
         save(notice);
 
         entityManager.getTransaction().commit();
@@ -69,7 +70,7 @@ class NotificationAddNoticeConfigTest extends BatchTestSupport {
         entityManager.getTransaction().begin();
 
         notificationRepository.deleteTestNotification(now);
-        delete(member);
+        delete(member1);
         delete(notice);
 
         entityManager.getTransaction().commit();
@@ -100,8 +101,8 @@ class NotificationAddNoticeConfigTest extends BatchTestSupport {
 
         Notification notification = notificationRepository.findAll().stream().findAny().get();
 
-        assertThat(notification.getMemberId()).isEqualTo(member.getEmail());
-        assertThat(notificationRedisTemplate.opsForValue().get(member.getEmail())).isTrue();
+        assertThat(notification.getMemberId()).isEqualTo(member1.getEmail());
+        assertThat(notificationRedisTemplate.opsForValue().get(member1.getEmail())).isTrue();
 
         assertThat(notification.getMessage()).isEqualTo("공지사항이 추가되었어요! '" + notice.getTitle() + "'");
         assertThat(notification.getPath()).isEqualTo("/api/notice/" + notice.getId());

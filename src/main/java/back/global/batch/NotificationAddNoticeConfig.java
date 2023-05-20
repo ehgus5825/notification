@@ -1,5 +1,13 @@
 package back.global.batch;
 
+import back.global.common.querydsl.expression.Expression;
+import back.global.common.querydsl.options.QuerydslNoOffsetNumberOptions;
+import back.global.common.querydsl.options.QuerydslNoOffsetOptions;
+import back.global.common.querydsl.options.QuerydslNoOffsetStringOptions;
+import back.global.common.querydsl.reader.QuerydslNoOffsetPagingItemReader;
+import back.member.application.domain.Member;
+import back.member.application.domain.MemberStatus;
+import back.member.application.domain.QMember;
 import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
 import back.notification.application.domain.Notification;
 import back.notification.application.domain.NotificationType;
@@ -20,6 +28,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 
 import javax.persistence.EntityManagerFactory;
+
+import static back.member.application.domain.QMember.*;
 
 @RequiredArgsConstructor
 @Configuration
@@ -47,7 +57,7 @@ public class NotificationAddNoticeConfig {
     @JobScope
     public Step noticeStep() {
         return stepBuilderFactory.get("noticeStep")
-                .<String, Notification>chunk(chunkSize)
+                .<Member, Notification>chunk(chunkSize)
                 .reader(noticeNotificationReader())
                 .processor(noticeNotificationProcessor(null, null))
                 .writer(noticeNotificationWriter())
@@ -56,28 +66,29 @@ public class NotificationAddNoticeConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<String> noticeNotificationReader() {
-        return new JpaPagingItemReaderBuilder<String>()
-                .name("noticeNotificationReader")
-                .entityManagerFactory(entityManagerFactory)
-                .pageSize(chunkSize)
-                .queryString("select m.email from Member m")
-                .build();
+    public QuerydslNoOffsetPagingItemReader<Member> noticeNotificationReader() {
 
+        QuerydslNoOffsetNumberOptions<Member, Long> option = new QuerydslNoOffsetNumberOptions<>(member.id, Expression.ASC);
+
+        return new QuerydslNoOffsetPagingItemReader<>(entityManagerFactory, chunkSize, option,
+                queryFactory -> queryFactory
+                        .selectFrom(member)
+                        .where(member.memberStatus
+                                .eq(MemberStatus.STEADY_STATUS)));
     }
 
     @Bean
     @StepScope
-    public ItemProcessor<String, Notification> noticeNotificationProcessor(
+    public ItemProcessor<Member, Notification> noticeNotificationProcessor(
                                                                     @Value("#{jobParameters['title']}") String title,
                                                                     @Value("#{jobParameters['id']}") Long id ) {
 
-        return email -> {
-            adapter.update(email);
+        return member -> {
+            adapter.update(member.getEmail());
             Notification notification = Notification.create(
                     NotificationType.NOTICE,
                     "/api/notice/" + id,
-                    email,
+                    member.getEmail(),
                     HttpMethod.GET.name());
             notification.createNoticeMessage(title);
             return notification;

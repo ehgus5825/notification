@@ -1,5 +1,6 @@
 package back.config;
 
+import back.global.config.QuerydslConfig;
 import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -21,6 +22,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EntityScan("back")
 @EnableJpaRepositories("back.notification.adapter.out.repository")
 @EnableTransactionManagement
-//@Import(Querydsl...)
+@Import(QuerydslConfig.class)
 public class TestBatchLegacyConfig { }
 

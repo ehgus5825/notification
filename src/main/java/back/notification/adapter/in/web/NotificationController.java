@@ -12,6 +12,7 @@ import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.context.ApplicationContext;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,7 +31,7 @@ public class NotificationController {
     private final ApplicationContext context;
     private final EntityManager em;
 
-    @PostMapping("/notice/run/{id}")
+    @GetMapping("/notice/run/{id}")
     public ExitStatus noticeJobRun(@PathVariable("id") Long id) throws Exception {
 
         Notice notice = em.createQuery("select n from Notice n where n.id = :id", Notice.class)
@@ -55,7 +56,7 @@ public class NotificationController {
         return jobLauncher.run(noticeConfig.noticeJob(), parameters).getExitStatus();
     }
 
-    @PostMapping("/ingredient/update/run/{id}")
+    @GetMapping("/ingredient/update/run/{id}")
     public ExitStatus addIngredientJobRun(@PathVariable("id") Long id) throws Exception {
 
         RegisteredIngredient ingredient = em.createQuery("select ri from RegisteredIngredient ri where ri.id = :id", RegisteredIngredient.class)
