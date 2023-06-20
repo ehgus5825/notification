@@ -1,48 +1,32 @@
 package back.config;
 
-import back.global.TestData;
-import back.global.batch.NotificationAddNoticeConfig;
-import back.global.config.NotificationRedisConfig;
-import back.ingredient.application.domain.Ingredient;
-import back.ingredient.application.domain.QIngredient;
-import back.ingredient.application.domain.RegisteredIngredient;
-import back.member.application.domain.Member;
-import back.member.application.domain.MemberStatus;
-import back.member.application.domain.QMember;
-import back.notification.adapter.out.dto.OutIngredientDTO;
+import back.entity.*;
+import back.TestData;
+import back.dto.OutIngredientDTO;
 import back.notification.adapter.out.dto.QOutIngredientDTO;
-import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
-import back.notification.application.domain.Notification;
-import back.global.batch.NotificationScheduleConfig;
-import back.notification.adapter.out.repository.NotificationRepository;
-import back.notification.application.domain.NotificationType;
+import back.persistence.NotificationByMemberAdapter;
+import back.entity.Notification;
+import back.batch.NotificationScheduleConfig;
+import back.repository.NotificationRepository;
+import back.entity.NotificationType;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.*;
-import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpMethod;
-import org.springframework.test.context.ContextConfiguration;
 
-import javax.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
-import static back.ingredient.application.domain.QIngredient.*;
-import static back.member.application.domain.QMember.*;
-import static back.member.application.domain.QMember.member;
-import static java.time.LocalDate.from;
-import static java.time.format.DateTimeFormatter.ofPattern;
+import static back.entity.QIngredient.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBatchTest
@@ -130,7 +114,7 @@ class NotificationScheduleConfigTest extends BatchTestSupport {
 
         assertThat(notificationList.get(0).getMemberId()).isEqualTo(ingredient1.getEmail());
         assertThat(notificationList.get(0).getMessage()).isEqualTo(ingredient1.getName() + " 외 "+ (ingredient1.getCount() - 1) + "개 식재료의 소비기한이 " + 1 + "일 남았습니다. 식재료 확인하러가기!");
-        assertThat(notificationList.get(0).getPath()).isEqualTo("/api/ingredients/deadline/" + 1);
+        assertThat(notificationList.get(0).getPath()).isEqualTo("/notification/exp?day=1");
         assertThat(notificationList.get(0).getType()).isEqualTo(NotificationType.EXPIRATION_DATE);
         assertThat(notificationList.get(0).getMethod()).isEqualTo(HttpMethod.GET.name());
 
@@ -138,7 +122,7 @@ class NotificationScheduleConfigTest extends BatchTestSupport {
 
         assertThat(notificationList.get(1).getMemberId()).isEqualTo(ingredient2.getEmail());
         assertThat(notificationList.get(1).getMessage()).isEqualTo(ingredient2.getName() + "의 소비기한이 " + 3 + "일 남았습니다. 식재료 확인하러가기!");
-        assertThat(notificationList.get(1).getPath()).isEqualTo("/api/ingredients/deadline/" + 3);
+        assertThat(notificationList.get(1).getPath()).isEqualTo("/notification/exp?day=3");
         assertThat(notificationList.get(1).getType()).isEqualTo(NotificationType.EXPIRATION_DATE);
         assertThat(notificationList.get(1).getMethod()).isEqualTo(HttpMethod.GET.name());
 

@@ -1,13 +1,12 @@
 package back.config;
 
-import back.global.TestData;
-import back.global.batch.NotificationAddNoticeConfig;
-import back.global.config.NotificationRedisConfig;
-import back.member.application.domain.Member;
-import back.notice.Notice;
-import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
-import back.notification.application.domain.Notification;
-import back.notification.adapter.out.repository.NotificationRepository;
+import back.TestData;
+import back.batch.NotificationAddNoticeConfig;
+import back.entity.Member;
+import back.entity.Notice;
+import back.persistence.NotificationByMemberAdapter;
+import back.entity.Notification;
+import back.repository.NotificationRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

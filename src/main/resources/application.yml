@@ -1,6 +1,11 @@
 spring:
   redis:
     notification:
-      host: localhost
+      host: redis-notification
       port: 6377
       timeout: 300
+#    notification:
+#      host: 49.50.161.94
+#      port: 6379
+#      password: "100506"
+#      timeout: 300

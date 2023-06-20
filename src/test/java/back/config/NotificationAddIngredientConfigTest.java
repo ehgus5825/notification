@@ -1,35 +1,28 @@
 package back.config;
 
-import back.global.TestData;
-import back.global.config.NotificationRedisConfig;
-import back.ingredient.application.domain.RegisteredIngredient;
-import back.ingredient.application.domain.SuggestedIngredient;
-import back.member.application.domain.Member;
-import back.notification.adapter.out.persistence.NotificationByMemberAdapter;
-import back.notification.application.domain.Notification;
-import back.global.batch.NotificationAddIngredientConfig;
-import back.notification.adapter.out.repository.NotificationRepository;
-import back.notification.application.domain.NotificationType;
+import back.TestData;
+import back.entity.RegisteredIngredient;
+import back.entity.SuggestedIngredient;
+import back.entity.Member;
+import back.persistence.NotificationByMemberAdapter;
+import back.entity.Notification;
+import back.batch.NotificationAddIngredientConfig;
+import back.repository.NotificationRepository;
+import back.entity.NotificationType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.*;
-import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.test.context.ContextConfiguration;
 
-import javax.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -81,7 +74,7 @@ class NotificationAddIngredientConfigTest extends BatchTestSupport {
 
         notificationRepository.deleteTestNotification(now);
         delete(member);
-        delete(suggestedIngredient);
+        //delete(suggestedIngredient);
 
         entityManager.getTransaction().commit();
         entityManager.clear();
@@ -117,7 +110,7 @@ class NotificationAddIngredientConfigTest extends BatchTestSupport {
 
         assertThat(notification.getMemberId()).isEqualTo(suggestedIngredient.getEmail());
         assertThat(notification.getMessage()).isEqualTo("회원님이 요청했던 " + registeredIngredient.getName() + "를 이제 냉장고에 담을 수 있습니다. (식재료 추가하기)");
-        assertThat(notification.getPath()).isEqualTo("/api/ingredients/unit/" + registeredIngredient.getId());
+        assertThat(notification.getPath()).isEqualTo("/refrigerator/add/info?ingredient=" + registeredIngredient.getName());
         assertThat(notification.getType()).isEqualTo(NotificationType.INGREDIENT);
         assertThat(notification.getMethod()).isEqualTo(HttpMethod.GET.name());
     }
